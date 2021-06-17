@@ -1,0 +1,125 @@
+// events
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreeJS-JamesDEV</title>
+    <style>
+        body { margin: 0; }
+    </style>
+</head>
+<body>
+    <script src="https://threejs.org/build/three.js"></script>
+    
+    <!-- MTLLoader & OBJLoader -->
+    <script src="https://threejs.org/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://threejs.org/examples/js/loaders/MTLLoader.js"></script>
+
+    <!-- FBXLoader & AnimationMixer -->
+    <script src="https://threejs.org/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate/umd/index.js"></script>
+
+    <!-- Events -->
+    <script src='https://rawgit.com/jeromeetienne/threex.domevents/master/threex.domevents.js'></script>
+
+    <script>
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+        camera.position.z = 10;
+        var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true });
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setClearColor( 0x000000, 0 );
+        document.body.appendChild( renderer.domElement );
+
+        // Object EVENT
+        var domEvents = new THREEx.DomEvents(camera, renderer.domElement);
+
+        var light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(0, 0, 100);
+        scene.add(light);
+            
+        var mtlLoader = new THREE.MTLLoader(),
+            loader = new THREE.OBJLoader();
+
+        mtlLoader.load(
+            '/objs/12248_Bird_v1_L2.mtl', 
+            materials => {
+                loader.setCrossOrigin(true);
+                materials.preload();
+                loader.setMaterials(materials);
+                loader.load(
+                    '/objs/12248_Bird_v1_L2.obj', 
+                    object => {
+                        object.name = "DuckDuck";
+                        object.position.x = -2;
+                        object.position.y = -3;
+                        object.position.z = 3;
+                        object.scale.set(0.1, 0.1, 0.1);
+                        object.rotation.x = -(Math.PI/3);
+
+                        // Events
+                        var onDocumentMouseDown = event => alert(event.target.name);
+                        domEvents.addEventListener(object, 'mousedown', onDocumentMouseDown, false);
+                        
+                        scene.add(object);
+                    }, 
+                    xhr => console.log(xhr.loaded / xhr.total * 100, '% loaded'), 
+                    _ => alert('error')
+                );
+            }, 
+            xhr => console.log('MTLLoader: ', xhr.loaded / xhr.total * 100, '% loaded'), 
+            _ => alert('error')
+        );
+
+        var mixer,
+            modelReady = false,
+            loaderFbx = new THREE.FBXLoader(),
+            player,
+            clock = new THREE.Clock();
+
+        loaderFbx.load(
+            '/objs/fbxs/character.fbx',
+            fbx => {
+                fbx.scale.setScalar(0.1);
+                fbx.position.x = 2,
+                fbx.position.y = -3,
+                fbx.position.z = 3;
+                fbx.traverse( c => c.castShadow = true);
+                fbx.scale.multiplyScalar(0.5); 
+
+                var cb = _ => alert(".FBX File Object-Click");
+                domEvents.addEventListener(fbx, 'mousedown', cb, false);
+                
+                mixer = new THREE.AnimationMixer(fbx),
+                clickPositionX = 0,
+                clickPositionY = 0,
+                objecTouch = false;
+                scene.add(fbx);
+                var anim = new THREE.FBXLoader();
+                anim.load(
+                    '/objs/fbxs/Sitting.fbx', 
+                    a => {
+                        player = mixer.clipAction(a.animations[0]);
+                        player.play();
+                        modelReady = true
+                    }
+                );
+            }
+        );
+
+        var animate = () => {
+            if(modelReady) mixer.update(clock.getDelta());
+
+            requestAnimationFrame( animate );
+            renderer.render( scene, camera );
+        }
+        animate();
+        
+    </script>
+</body>
+</html> 
